@@ -716,33 +716,221 @@ chart.leftAxis.valueFormatter = MyValueFormatter()
 
 ## 11. 特殊设置与样式
 
-## 12. 图例
+在*入门*和*通用设置与样式*章节介绍了所有图表通用的的设置和样式方法。*本章聚焦于每种图表特有的设置*。
 
-## 13. 描述
+### Line-,Bar-,Scatter-,Candle-与BubbleChart
 
-## 14. 动态和实时数据
+* `setAutoScaleMinMaxEnabled(boolean enabled)`: 是否启用自动缩放纵轴。如果启用，当视点改变时，纵轴将自动根据当前横轴范围内纵坐标的最大值和最小值进行缩放。在显示金融数据时很有用。默认值：false。
+* `setKeepPositionOnRotation(boolean enabled)`: 设置在屏幕方向改变后，图表是否会保持原来的位置（在缩放和滚动方面）。默认值：false。
 
-## 15. 修改视点
+### BarChart
+
+* `setDrawValueAboveBar(boolean enabled)`: 如果设置为true，所有的数据都将绘制在柱形上方，而不是在柱形顶端下面。
+* `setDrawBarShadow(boolean enabled)`: 如果设置为true，在每个柱形下层将绘制一个表示最大值的灰色区域。启用该项将降低大约40%的性能。
+* `setDrawValuesForWholeStack(boolean enabled)`:如果设置为true，所有堆叠柱形的数据都将单独绘制，而不是只在顶部显示它们的和。
+* `setDrawHighlightArrow(boolean enabled)`: 设置为true时，高亮数据时将会在每个柱形上绘制高亮的箭头。
+
+### PieChart
+
+* `setDrawSliceText(boolean enabled)`:设置为true时，将会在扇区里绘制横轴数据。
+* `setUsePercentValues(boolean enabled)`: 如果启用，图表里的数据将会以百分比的形式绘制，而不是用原始的值。提供的数据要经`ValueFormatter`格式化成百分比的形式。
+* `setCenterText(SpannableString text)`:设置在`PieChart`中央显示的文本。为了避免绘制到扇区，过长的文本会被自动压缩。
+* `setCenterTextRadiusPercent(float percent)`: 设置中央矩形文本框占饼状图中心的空洞的比例，默认1.f（100%）。
+* `setHoleRadius(float percent)`: 设置饼状图中央空洞半径占饼状图半径的比例，默认50%。
+* `setTransparentCircleRadius(float percent)`: 设置饼状图中与中央空洞相邻的透明圆环外半径栈饼状图半径的比例，默认值55%，意味着默认圆环比空洞大5%。
+* `setTransparentCircleColor(int color)`:设置圆环的颜色。
+* `setTransparentCircleAlpha(int alpha)`:设置圆环的透明度（0-255）。
+* `setMaxAngle(float maxangle)`:设置饼状图的最大角度。360f意味着一个完整的饼状图，180f表示一个半圆。默认值：360f。 
+
+### RadaChart
+
+* `setSkipWebLineCount(int count)`: 允许跳过来自图表中心的网络线。在有大量线条时很有用。
+
+## 12. 图例(Legend)
+
+默认情况下，所有类型的图表都支持图例，能在给图表设置数据后自动绘制一个图例。图例通常包含多个条目，每个条目由一个标签和一个表格/形状表示。
+
+图例包含的自动生成的条目的数量取决于`DataSet`的标签数量和不同颜色的数量（在所有`DataSet`对象范围内）。图表中图例的标签取决于给图表对象设置的标签。如果没有给`DataSet`指定标签，图表将会自动为它们生成标签。如果一个`DataSet`使用了多种颜色，这些颜色将被聚集起来，并只在一个标签上显示。
+
+为了定制化图例，您可以通过使用`getLegend()`方法来获取`Legend`对象。
+
+```java
+Legend legend = chart.getLegend();
+```
+
+### 控制是否绘制图例
+
+* `setEnabled(boolean enabled)`:设置启用或禁用图例。如果禁用，图例将不会被绘制。
+
+### 修改图例样式
+
+* `setTextColor(int color)`: 设置图例标签的颜色。
+* `setTextSize(float size)`:以`dp`为单位，设置图例标签的文本大小。
+* `setTypeface(Typeface tf)`: 给图例标签设置一个`Typeface`。
+
+### 避免换行/越界
+
+* `setWordWrapEnabled(boolean enabled)`:如果启用，图例内容不会超越图表边界，而是会在下一行绘制。请注意，这将降低性能，而且只在图例位于图表下方时可用。
+* `setMaxSizePercent(float maxSize)`:设置相对于整个图表视图，图例最大尺寸的百分比。默认值：0.95f(95%)。
+
+### 定制化图例
+
+* `setPosition(LegendPosition pos)`: 设置图例显示的位置。可以在`RIGHT_OF_CHART`,`RIGHT_OF_CHART_CENTER`,`RIGHT_OF_CHART_INSIDE`,`BELOW_CHART_LEFT`,`BELOW_CHART_RIGHT`,`BELOW_CHART_CENTER`,或者`PIECHART_CENTER`（仅`PieChart`）等中选择。
+* `setForm(LegendForm shape)`:设置要使用的`LegendForm`。这是紧邻图例标签用`DataSet`的颜色绘制的形状。可以在`SQUARE`,`CIRCLE`或者`LINE`中选择。
+* `setFormSize(float size)`: 以`dp`为单位，设置图例形状的大小。
+* `setXEntrySpace(float space)`:设置在水平方向上，图例条目的间距。
+* `setYEntrySpace(float space)`:设置在竖直方向上，图例条目的间距。 
+* `setFormToTextSpace(float space)`: 设置图例标签和图例形状的间距。
+* `setWordWrapEnabled(boolean enabled)`:图例是否可以换行？当前仅支持`BelowChartLeft`,`BelowChartRight`,`BelowChartCenter`。 
+
+### 设置自定义的标签和颜色
+
+* `setCustom(int[] colors, String[] labels)`:设置自定义的图例标签和颜色数组。颜色数量要与标签数量匹配。每个颜色将绘制在和它索引相同的形状上。这将禁用根据数据集自动计算图例标签和颜色。调用`resetCustom()`可以重新启用（然后还要调用`notifyDataSetChanged()`来重新计算图例）。
+* `resetCustom()`: 调用此方法将禁用自定义图例标签（由`setCustom(...)`设置）。取而代之的是，标签将被自动计算（在调用`notifyDataSetChanged()`后）。
+* `setExtra(int[] colors, String[] labels)`:设置在自动计算的标签，颜色后追加的标签和颜色（如果图例已经完成计算，您需要调用`notifyDataSetChanged()`使改动生效）。
+
+### 示例
+
+```java
+    Legend l = chart.getLegend();
+    l.setFormSize(10f); // set the size of the legend forms/shapes
+    l.setForm(LegendForm.CIRCLE); // set what type of form/shape should be used
+    l.setPosition(LegendPosition.BELOW_CHART_LEFT);
+    l.setTypeface(...);
+    l.setTextSize(12f);
+    l.setTextColor(Color.BLACK);
+    l.setXEntrySpace(5f); // space between the legend entries on the x-axis
+    l.setYEntrySpace(5f); // space between the legend entries on the y-axis
+    // set custom labels and colors
+    l.setCustom(ColorTemplate.VORDIPLOM_COLORS, new String[] { "Set1", "Set2", "Set3", "Set4", "Set5" });
+    // and many more...
+```
+
+## 13. 描述(Description)
+
+*描述指的是通常显示在图表右下角（默认值）的文本。如有需要，它可以提供额外的信息来展示图表数据。*
+
+### 用法
+
+可以用下面的方法来获取`Description`对象:
+
+```java
+Description description = chart.getDescription();
+```
+
+### 样式
+
+下面的方法可以用来修改描述的样式：
+
+```java
+// enable or disable the description
+description.setEnabled(...);
+// set the description text
+description.setText("...");
+// set the position of the description on the screen
+description.setPosition(float x, float y);
+```
+
+## 14. 动态实时数据
+
+MPAndroid是免费软件，*官方不支持动态实时数据*。
+
+## 15. 修改视区
+
+本库由大量方法用于修改视区（视区是图表上可见的，正对图表的区域）。请注意这些方法这在`LineChart`,`BarChart`,`ScatterChart`和`CandleStickChart`上可用。
+
+下面提到的方法由`Chart`类实现。另一种修改视区的方式是直接通过`ViewPortHandler`访问它（不使用由`Chart`类提供的间接访问方法）。只推荐熟悉API的高级用户使用这种方式。
+
+> *请注意，只有在给`Chart`设置数据后，才能调用其**修改视区的方法**。*
+
+### 限制可视内容
+
+* `setVisibleXRangeMaximum(float maxXRange)`:设置一次性最大可见区域的大小（在横轴范围上）。举个例子，如果设为10，那么在不进行滚动的情况下，横轴上可见数据不会超过10个。
+* `setVisibleXRangeMinimum(float minXRange)`: 设置一次性最小可见区域的大小（在横轴范围上）。举个例子，如果设为10，那么在横轴上不可能通过放大显示少于10个的数据。
+* `setVisibleYRangeMaximum(float maxYRange, AxisDependency axis)`: 设置一次性最大可见区域的大小（在纵轴范围上）。您还需要提供该约束作用于哪个纵轴。
+* `setViewPortOffsets(float left, float top, float right, float bottom)`:为当前视图设置自定义的偏移量（和实际图表窗口边缘的偏移）。设置该项将禁用自动计算偏移量。可通过`resetViewPortOffsets()`方法撤销。**只在您有确切需要时调用该方法**。
+* `resetViewPortOffsets()`: 重置所有通过`setViewPortOffsets(...)`方法设置的自定义偏移量。允许图表再次自动计算偏移量。
+* `setExtraOffsets(float left, float top, float right, float bottom)`:设置追加在自动计算偏移量后面的额外偏移量。这不会改变自动计算的偏移量，但会给它们增加额外的空间。
+
+### 移动视图
+
+* `fitScreen()`:重置所有缩放和拖拽，使图表恰好适合它的边界（最小化）。
+* `moveViewToX(float xValue)`:把当前视区的左边缘移动到指定横坐标处。
+* `moveViewToY(float yValue, AxisDependency axis)`: 在指定的纵轴上，居中给定的纵坐标值。
+* `moveViewTo(float xValue, float yValue, AxisDependency axis)`:等效于调用`moveViewToX`()和`moveViewToY()`（确保和`setVisibleXRange(...)`还有`setVisibleYRange(...)`一起调用）。
+* `centerViewTo(float xValue, float yValue, AxisDependency axis)`:这将移动当前视区的中心到指定横纵坐标处（确保和`setVisibleXRange(...)`还有`setVisibleYRange(...)`一起调用）。
+
+### 伴随着动画移动视图
+
+（于v2.2.3发布版添加）
+
+* `moveViewToAnimated(float xValue, float yValue, AxisDependency axis, long duration)`:同`moveViewTo()`,会有指定时长的动画效果。
+* `centerViewToAnimated(float xValue, float yValue, AxisDependency axis, long duration)`:同`centerViewTo`,会有指定时长的动画效果。
+
+注意：所有的`moveViewTo(...)`方法都将自动调用`invalidate()`方法来刷新图表。因此没必要再调用`invalidate()`。
+
+### 缩放（由程序控制）
+
+* `zoomIn()`:自图表中心放大至原来的1.4倍。
+* `zoomOut()`: 自图表中心缩小到原来的0.7倍。
+* `zoom(float scaleX, float scaleY, float x, float y)`: 根据给定的缩放系数放大或缩小视区。x，y表示以像素为单位的缩放中心坐标。记住缩放系数为1f时等价于不缩放。
+* `zoom(float scaleX, float scaleY, float xValue, float yValue, AxisDependency axis)`:根据给定的缩放系数放大或缩小视区。xValue，yValue表示缩放中心的实际数据值。记住缩放系数为1f时等价于不缩放。
+
+### 伴有动画的缩放
+
+（于v2.2.3发布版添加）
+
+* `zoomAndCenterAnimated(float scaleX, float scaleY, float xValue, float yValue, AxisDependency axis, long duration)`:以伴有动画的方式，按指定系数，缩放中心缩放视区。
+
+### 完整示例
+
+```java
+chart.setData(...); // first set data
+// now modify viewport
+chart.setVisibleXRangeMaximum(20); // allow 20 values to be displayed at once on the x-axis, not more
+chart.moveViewToX(10); // set the left edge of the chart to x-index 10
+// moveViewToX(...) also calls invalidate()
+```
 
 ## 16. 动画
 
+
+
 ## 17. 标记视图
+
+
 
 ## 18. ChartData类
 
+
+
 ## 19. ChartData子类
+
+
 
 ## 20. DataSet类
 
+
+
 ## 21. DataSet子类
+
+
 
 ## 22. VIewPortHandler
 
+
+
 ## 23. 自定义填充线位置
+
+
 
 ## 24. Xamarin
 
+
+
 ## 25. 创建用户数据集
+
+
 
 ## 26. 杂项
 
