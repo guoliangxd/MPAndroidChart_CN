@@ -556,15 +556,136 @@ List<Entry> entries = ...;
 Collections.sort(entries, new EntryXComparator());
 ```
 
-为什么需要这样的理由是由于本库使用了二分查找算法，只有在有序的列表上才会有更好的表现。
+为什么需要这样的理由是由于本库使用了二分查找算法，只有在有序的列表上才会有更好的性能表现。
 
 ### BarChart（柱状图）
 
+`BarChart`设置数据的方式与`LineChart`非常相似。主要的差异在设置给图表的数据对象上（例如`BarEntry`替代了`Entry`）。除此之外，`BarChart`还有几点样式上的差别。
+
+考虑以下用数据填充`BarChart`的示例：
+
+```java
+List<BarEntry> entries = new ArrayList<>();
+entries.add(new BarEntry(0f, 30f));
+entries.add(new BarEntry(1f, 80f));
+entries.add(new BarEntry(2f, 60f));
+entries.add(new BarEntry(3f, 50f)); 
+                                    // gap of 2f
+entries.add(new BarEntry(5f, 70f));
+entries.add(new BarEntry(6f, 60f));
+BarDataSet set = new BarDataSet(entries, "BarDataSet");
+```
+
+在上面的示例中，创建了5个`BarEntry`对象并将它们添加到了一个`BarDataSet`中。注意在第4和第5个条目之间有“2”的间隙。在这个例子中，这个间隙用来展示`BarChart`如何在图表中定位柱形。下一步，要创建一个`BarData`对象：
+
+```java
+BarData data = new BarData(set);
+data.setBarWidth(0.9f); // set custom bar width
+chart.setData(data);
+chart.setFitBars(true); // make the x-axis fit exactly all bars
+chart.invalidate(); // refresh
+```
+
+在上面的代码片段中，创建了一个`BarData`对象。当为图表创建`BarEntry`对象时，我们为每个柱形在横轴上预留了"1f"的空间（以横坐标为中心）。通过设置柱形的宽度为0.9f，我们创建了0.1f的柱形间距。调用`setFitBars(true)`将通知图表根据给定的数据自动调整横轴坐标范围，不会有柱形在边缘被截断。
+
+在创建`BarData`对象后，我们把它设置给图表并刷新。
+
 ### Grouped BarChart（分组柱状图）
 
-### Stacked BarChart（堆叠柱状图）
+从v3.0.0发布版开始，MPAndroidChart支持以显示分组或用户自定义的方式绘制柱形（在这种情况下本库将处理横坐标）。这意味着用户可以把柱形放在他想要的任意位置。
+
+这一节主要关注显示分组的`BarChart`，这意味着本库将处理柱形的横坐标。
+
+考虑如下示例：
+
+```java
+YourData[] group1 = ...;
+YourData[] group2 = ...;
+List<BarEntry> entriesGroup1 = new ArrayList<>();
+List<BarEntry> entriesGroup2 = new ArrayList<>();
+// fill the lists
+for(int i = 0; i < group1.length; i++) {
+    entriesGroup1.add(new BarEntry(i, group1.getValue()));
+    entriesGroup2.add(new BarEntry(i, group2.getValue()));
+}
+BarDataSet set1 = new BarDataSet(entriesGroup1, "Group 1");
+BarDataSet set2 = new BarDataSet(entriesGroup2, "Group 2");
+```
+
+在这个例子中，我们有两组柱形，每组均由一个独立的`BarDataSet`表示。在显式分组中（由库函数处理），条目确切的横坐标并不重要。分组是基于条目列表中`BarEntry`的位置执行的。
+
+```java
+float groupSpace = 0.06f;
+float barSpace = 0.02f; // x2 dataset
+float barWidth = 0.45f; // x2 dataset
+// (0.02 + 0.45) * 2 + 0.06 = 1.00 -> interval per "group"
+BarData data = new BarData(set1, set2);
+data.setBarWidth(barWidth); // set the width of each bar
+barChart.setData(data);
+barChart.groupBars(1980f, groupSpace, barSpace); // perform the "explicit" grouping
+barChart.invalidate(); // refresh
+```
+
+在上面的代码片段中，`BarDataSet`对象被添加到了`BarChart`中。`groupBars(...)`方法执行两个`BarDataSet`的分组。这个方法需要如下的参数：
+
+```java
+public void groupBars(float fromX, float groupSpace, float barSpace) { ... }
+```
+
+参数`fromX`决定了已分组的柱形从哪里开始（在这个例子中"1980"），`groupSpace`决定了组间距，`barSpace`决定了组内柱形的间距。基于这些参数，`groupBars(...)`函数将横轴上每个柱形的位置调整为分组外观，并保留单个`BarEntry`对象的顺序。
+
+每个组在横轴上的”间隔“（占用空间）也由参数`groupSpace`,`barSpace`,`barWidth`决定。
+
+当然，也可以不用`groupBar(...)`方法来实现分组柱状图，只需要手动在横轴上定位各个柱形的位置。
+
+为了使横轴的刻度在每组的中央，您可以使用`setCenterAxisLabels(...)`方法：
+
+```java
+XAxis xAxis = chart.getXAxis();
+xAxis.setCenterAxisLabels(true);
+```
+
+### Stacked BarChart（堆栈柱状图）
+
+堆叠柱状图的建立和普通柱状图非常相似，但创建单个`BarEntry`的方式除外。如果是堆叠的柱形图，则要使用不同的`BarEntry`构造函数：
+
+```java
+public BarEntry(float x, float [] values) { ... }
+```
+
+这个构造函数允许给纵坐标提供多个值（通过数组），这些值表示每个柱形的"堆栈"值，数组中的每个值都是堆栈的一部分。
+
+考虑如下示例：
+
+```java
+BarEntry stackedEntry = new BarEntry(0f, new float[] { 10, 20, 30 });
+```
+
+这个`BarEntry`的横轴位置为0f，纵轴值由三部分组成，累加的高度为60（10 + 20 + 30）。
 
 ### PieChart（饼状图）
+
+与其他类型的图表不同，`PieChart`以`PieEntry`对象的方式回去数据。这些对象的构造函数如下所示：
+
+```java
+public PieEntry(float value, String label) { ... }
+```
+
+构造函数的第一个参数是在饼状图中用于绘制切片的实际值，第二个字符串参数被称为标签，用于提供描述切片的额外信息。考虑如下`PieChart`的设置示例：
+
+```java
+List<PieEntry> entries = new ArrayList<>();
+entries.add(new PieEntry(18.5f, "Green"));
+entries.add(new PieEntry(26.7f, "Yellow"));
+entries.add(new PieEntry(24.0f, "Red"));
+entries.add(new PieEntry(30.8f, "Blue"));
+PieDataSet set = new PieDataSet(entries, "Election Results");
+PieData data = new PieData(set);
+pieChart.setData(data);
+pieChart.invalidate(); // refresh
+```
+
+`PieEntry`对象无需保存横坐标值，因为`PieEntry`对象显示的顺序由条目列表中的顺序决定。
 
 ## 8. 设置颜色
 
@@ -894,51 +1015,510 @@ chart.moveViewToX(10); // set the left edge of the chart to x-index 10
 
 ## 16. 动画
 
+所有图表类型都支持动画，它可以用来以一种很棒的方式创建/建立图表。有三个方法用来设置横纵轴上动画的持续时间：
 
+* `animateX(int durationMillis)`:在横轴上绘制图表数据，这意味着图表会在指定时间内从左到右建立。
+* `animateY(int durationMillis)`: 在纵轴上绘制图表数据，这意味着图表会在指定时间内自下而上建立。
+* `animateXY(int xDuration, int yDuration)`:在横纵坐标轴方向上绘制数据，这会使图表从左到右，自下而上建立。
 
-## 17. 标记视图
+```java
+mChart.animateX(3000); // animate horizontal 3000 milliseconds
+// or:
+mChart.animateY(3000); // animate vertical 3000 milliseconds
+// or:
+mChart.animateXY(3000, 3000); // animate horizontal and vertical 3000 milliseconds
+```
 
+如果调用了任意动画方法，则无需调用`invalidate()`方法来刷新图表。
 
+### 动画缓冲
+
+本库允许您给您的动画应用合适的缓冲函数。您可以从以下静态预定义`Easing.EasingOption`中选择：
+
+```java
+  public enum EasingOption {
+      Linear,
+      EaseInQuad,
+      EaseOutQuad,
+      EaseInOutQuad,
+      EaseInCubic,
+      EaseOutCubic,
+      EaseInOutCubic,
+      EaseInQuart,
+      EaseOutQuart,
+      EaseInOutQuart,
+      EaseInSine,
+      EaseOutSine,
+      EaseInOutSine,
+      EaseInExpo,
+      EaseOutExpo,
+      EaseInOutExpo,
+      EaseInCirc,
+      EaseOutCirc,
+      EaseInOutCirc,
+      EaseInElastic,
+      EaseOutElastic,
+      EaseInOutElastic,
+      EaseInBack,
+      EaseOutBack,
+      EaseInOutBack,
+      EaseInBounce,
+      EaseOutBounce,
+      EaseInOutBounce,
+  }
+```
+
+基本上，有两种方式来缓冲您的动画：
+
+#### **1. 预定义缓冲选项**（可在所有Android版本上运行）
+
+```java
+ public void animateY(int durationmillis,  Easing.EasingOption option); 
+```
+
+给任意动画函数传入预定义缓冲选项：
+
+```java
+ // animate both axes with easing
+ mChart.animateY(3000,  Easing.EasingOption.EaseOutBack); 
+```
+
+当您的程序在Android 3.0（API 11）以下运行时，请务必一直使用`Easing.EasingOption`作为预定义动画缓冲选项。
+
+#### **2. 自定义缓冲函数**（自定义缓冲函数在Android 3.0以下版本会崩溃）
+
+```java
+public void animateY(int durationmillis, EasingFunction function);
+```
+
+通过创建实现`EasingFunction`方法的类，来**创建您自定义的**缓冲函数：
+
+```java
+ /**
+  * Interface for creating custom made easing functions. 
+  */
+  public interface EasingFunction {
+     /**
+      * Called everytime the animation is updated.
+      * @param input - the time passed since the animation started (value between 0 and 1)
+      */
+      public float getInterpolation(float input);
+  }
+```
+
+然后用这种方式调用（注意，这在Android 3.0以下无法运行，将导致程序崩溃）：
+
+```java
+ // animate both axes with easing
+ mChart.animateY(3000, new MyEasingFunction()); 
+```
+
+## 17. 标记视图（弹出视图）
+
+*于v3.0.0发布版添加，`IMarker`表示图表中的标记（弹出视图）*
+
+### IMarker接口
+
+这个接口允许您创建在图条中高亮条目上像是的自定义标记视图。下面是这个接口提供的方法：
+
+```java
+public interface IMarker {
+    /**
+     * @return The desired (general) offset you wish the IMarker to have on the x- and y-axis.
+     *         By returning x: -(width / 2) you will center the IMarker horizontally.
+     *         By returning y: -(height / 2) you will center the IMarker vertically.
+     */
+    MPPointF getOffset();
+    /**
+     * @return The offset for drawing at the specific `point`. This allows conditional adjusting of the Marker position.
+     *         If you have no adjustments to make, return getOffset().
+     *
+     * @param posX This is the X position at which the marker wants to be drawn.
+     *             You can adjust the offset conditionally based on this argument.
+     * @param posY This is the X position at which the marker wants to be drawn.
+     *             You can adjust the offset conditionally based on this argument.
+     */
+    MPPointF getOffsetForDrawingAtPos(float posX, float posY);
+    /**
+     * This method enables a specified custom IMarker to update it's content every time the IMarker is redrawn.
+     *
+     * @param e         The Entry the IMarker belongs to. This can also be any subclass of Entry, like BarEntry or
+     *                  CandleEntry, simply cast it at runtime.
+     * @param highlight The highlight object contains information about the highlighted value such as it's dataset-index, the
+     *                  selected range or stack-index (only stacked bar entries).
+     */
+    void refreshContent(Entry e, Highlight highlight);
+    /**
+     * Draws the IMarker on the given position on the screen with the given Canvas object.
+     *
+     * @param canvas
+     * @param posX
+     * @param posY
+     */
+    void draw(Canvas canvas, float posX, float posY);
+}
+```
+
+创建标记视图
+
+为了创建您的标记视图，您需要新建一个实现了`IMarker`接口的类：
+
+```java
+public class YourMarkerView implements IMarker { ... }
+```
+
+除了实现`IMarker`接口，您还可以通过继承下面某个预定义标记视图的方式创建您自己的类。这种方式更简易，不需要实现`IMarker`接口的所有方法。通常只有特定的方法需要重写和定制。最重要的是要主动覆盖`refreshContent(...)`方法，让标记视图绘制适配要绘制的数据。下面是一个简单的例子：
+
+```java
+public class YourMarkerView extends MarkerView {
+    private TextView tvContent;
+    public MyMarkerView(Context context, int layoutResource) {
+        super(context, layoutResource);
+        // find your layout components
+        tvContent = (TextView) findViewById(R.id.tvContent);
+    }
+    // callbacks everytime the MarkerView is redrawn, can be used to update the
+    // content (user-interface)
+    @Override
+    public void refreshContent(Entry e, Highlight highlight) {
+        tvContent.setText("" + e.getY());
+        // this will perform necessary layouting
+        super.refreshContent(e, highlight);
+    }
+    private MPPointF mOffset; 
+    @Override
+    public MPPointF getOffset() {
+        if(mOffset == null) {
+           // center the marker horizontally and vertically
+           mOffset = new MPPointF(-(getWidth() / 2), -getHeight());
+        }
+        return mOffset;
+    }
+}
+```
+
+### 获取/设置标记
+
+用`setMarker()`来设置您图表的标记：
+
+```java
+IMarker marker = new YourMarkerView();
+chart.setMarker(marker);
+```
+
+用`getMarker()`方法获取设置给图表的标记：
+
+```java
+IMarker marker = chart.getMarker();
+```
+
+### 预定义标记
+
+简便起见，除了创建您自定义的标记视图外，本库还提供了一些预定义标记。这包括：
+
+* [MarkerView](https://github.com/PhilJay/MPAndroidChart/blob/master/MPChartLib/src/main/java/com/github/mikephil/charting/components/MarkerView.java):基础标记。允许在图表表层标记区域渲染提供的布局资源。可通过继承此类并重写`refreshContent(...)`方法来适配标记数据。
+* [MarkerImage](https://github.com/PhilJay/MPAndroidChart/blob/master/MPChartLib/src/main/java/com/github/mikephil/charting/components/MarkerImage.java):用于绘制图像的标记。允许在图表表层标记区域渲染提供的布局资源。可通过继承此类并重写`refreshContent(...)`方法来适配标记数据。
+
+### 传统的`MarkerView`
+
+在[v3.0.0](https://github.com/PhilJay/MPAndroidChart/releases)之前的版本，`MarkerView`类负责图表中高亮位置标记的绘制。更多关于此类的信息，请访问旧的[MarkerView 维基页面](https://github.com/PhilJay/MPAndroidChart/wiki/MarkerView)。
 
 ## 18. ChartData类
 
+本维基条目旨在更好的了解*MPAndroid*背后**数据模型**。
 
+`ChartData`是所有数据类（比如`LineData`,`BarData`...）的基类。它用于通过图表的`setData(...)`方法给图表提供数据。
+
+```java
+public class LineData extends ChartData { ...
+```
+
+下面提到的方法都已在`ChartData`类中实现，因此可用于所有子类。
+
+### 设置数据样式
+
+* `setValueTextColor(int color)`:给这个数据对象包含的所有数据集的文本设置的颜色（值标签绘制的颜色）。
+* `setValueTextColors(List colors)`:设置一组颜色。
+* `setValueTextSize(float size)`:以`dp`为单位，给这个数据对象所包含的所有数据集的文本设置大小。
+* `setValueTypeface(Typeface tf)`:给这个数据对象所包含的所有数据集的值标签设置`Typeface`。
+* `setValueFormatter(ValueFormatter f)`:给这个数据对象所包含的所有数据集设置一个自定义的`ValueFormatter`。
+* `setDrawValues(boolean enabled)`:启用/禁用绘制这个数据对象所包含的所有数据集的值（以文本形式）。 
+
+### 获取/常用方法
+
+* `getDataSetByIndex(int index)`:返回在`DataSet`列表中给定的索引的`DataSet`对象。
+* `contains(Entry entry)`:检查这个数据对象是否包含指定的条目。如果包含，则返回true，否则返回false。注意：此函数性能很差，不要再对性能有较高要求的场景下调用。
+* `contains(T dataSet)`: 如果这个数据对象包含给定的`DataSet`，返回true，否则返回false。
+
+### 清除
+
+* `clearValues()`:删除所有`DataSet`对象的数据和条目。但不会移除提供的横坐标值。
+
+### 高亮
+
+* `setHighlightEnabled(boolean enabled)`: 设置为true的话将允许通过触摸高亮这个`ChartData`对象和其包含的所有数据集。
+* `setDrawVerticalHighlightIndicator(boolean enabled)`:启用/禁用竖直高亮指示线。如果禁用，则不会绘制指示线。
+* `setDrawHorizontalHighlightIndicator(boolean enabled)`:启用/禁用水平高亮指示线，如果禁用，则不会绘制指示线。
+
+### 动态数据
+
+* `notifyDataChanged()`:通知数据对象其基础数据已更改，并执行所有必要的重写计算操作。
+
+有关从已有数据对象中添加/移除数据的方式，请查阅*动态实时数据*章节。
 
 ## 19. ChartData子类
 
+本维基条目主要关注`ChartData`类的子类。所有没提到的`ChartData`类子类，都没有提供特别的扩展。
 
+### BarData
+
+* `setGroupSpace(float percent)`:设置不同柱状图组的间距占一个柱形宽度的百分比。spae = 100表示一个柱形的宽度。默认值：80。
+* `isGrouped()`:如果数据对象已分组（包含一个以上的`DataSet`），则返回true，否则返回false。
+
+### ScatterData
+
+* `getGreatestShapeSize()`: 返回这个数据对象包含的所有数据集中最大的形状尺寸。
+
+### PieData
+
+* `getDataSet()`:返回设置给这个数据对象的`PieDataSet`对象。`PieData`对象不萌包含多个`PieDataSet`。
+* `setDataSet(PieDataSet set)`: 给这个数据对象设置其将表示的`PieDataSet`。
+
+### BubbleData
+
+* `setHighlightCircleWidth(float width)`:以`dp`为单位，给这个数据对象包含的所有`BubbleDataSet`设置高亮装填下环绕气泡的圆环宽度。
+
+### CombinedData
+
+这个数据对象设计用来包含所有其他的数据对象。使用`setData()`方法给这个对象提供数据。只用于`CombinedChart`。
+
+这是这个类的内部情况：
+
+```java
+public class CombinedData extends ChartData {
+    // ...
+    public CombinedData(List<String> xVals) { ... }
+    public CombinedData(String[] xVals) { ... }
+    public void setData(LineData data) { ... }
+    public void setData(BarData data) { ... }
+    public void setData(ScatterData data) { ... }
+    public void setData(CandleData data) { ... }
+    // ...
+}
+```
 
 ## 20. DataSet类
 
+`DataSet`类是所有数据集类（`LineDataSet`,`BarDataSet`,...）的基类。
 
+```java
+public class LineDataSet extends DataSet { ...
+```
+
+`Data`类表示图表中同一归属的一组或一类条目（`Entry`）。它用来在逻辑上区分图表内不同组的数据（例如，`LineChart`内某条线，`BarChart`内某组柱形）。
+
+下面提到的方法`DataSet`类均已实现，因此可用于所有子类：
+
+### 设置数据样式
+
+* `setValueTextColor(int color)`: 给这个`DataSet`对象设置文本值的颜色（绘制值标签的颜色）。
+* `setValueTextColors(List colors)`:设置一组用于值颜色的颜色。 
+* `setValueTextSize(float size)`:以`dp`为单位，给这个`DataSet`对象设置文本值大小。
+* `setValueTypeface(Typeface tf)`:给这个`DataSet`对象设置所有值标签的`Typeface`。
+* `setValueFormatter(ValueFormatter f)`:给这个`DataSet`对象设置自定义的`ValueFormatter`。
+* `setDrawValues(boolean enabled)`:启用/禁用绘制这个`DataSet`的值。
+
+如果您的数据对象中所有的值需要相同设置（比如颜色），您可以调用之前提到过的`ChartData`对象中提到的相关方法。
+
+### 高亮
+
+* `setHighlightEnabled(boolean enabled)`: 设置为true时将允许通过触摸高亮该`DataSet`。
+* `setDrawVerticalHighlightIndicator(boolean enabled)`:启用/禁用竖直高亮指示线。如果禁用，则不会绘制指示线。
+* `setDrawHorizontalHighlightIndicator(boolean enabled)`:启用/禁用水平高亮指示线。如果禁用，则不会绘制指示线。
+
+### 获取/常用方法
+
+* `contains(Entry entry)`:检查`DataSet`对象是否包含指定的`Entry`。如果包含，则返回true，否则返回false。注意：此函数性能很差，请不要在对性能有较高要求的场景下过度使用。
 
 ## 21. DataSet子类
 
+本维基条目主要关注`ChartSet`类的子类。所有未涉及的`ChartSet`子类都没有特殊的扩展。
 
+### Line-, Bar-, Scatter-, Bubble- & CandleDataSet（这些类均可使用下面提到的方法）
 
-## 22. VIewPortHandler
+* `setHighLightColor(int color)`:设置绘制高亮指示器使用的颜色。别忘了使用`getResource().getColor(...)`或者`Color.rgb(...)`获取颜色（或者使用预定义的`Color.BLACK...`）。
 
+### Line-, Bar-, Scatter-, Candle- & RadarDataSet
 
+* `setDrawHighlightIndicators(boolean enabled)`:启用/禁用竖直和水平高亮指示器。如果需要单独配置，可调用`setDrawVerticalHighlightIndicator(...)`,`setDrawHozizontalHighlightIndicator(...)`。
+* `setHighlightLineWidth(float width)`：以`dp`为单位，设置高亮线条（准线）的宽度。 
+
+### Line- & RadarDataSet
+
+* `setFillColor(int color)`:设置填充线曲面的颜色。
+* `setFillAlpha(int alpha)`:设置填充线曲面的透明度值（0-255）。默认值：85，255 = 不透明，0  = 完全透明。
+* `setFillDrawable(Drawable d)`:设置覆盖填充区域的`Drawable`。这也允许使用渐变。
+* `setDrawFilled(boolean filled)`:如果数据集需要被完全填充而不是只绘制一条线的话，设置为true。禁用将提升性能。其注意，此方法调用`canvas.clipPath(...)`方法绘制填充区域。对于API < 18（Android 4.3）的设备，图表的硬件加速应被关闭。默认值：false。
+* `setLineWidth(float width)`:设置数据集线条的宽度（最小 = 0.2f， 最大=10f）。默认值为1f。注意：线条越细，性能越好，线条越粗，性能越差。
+
+### LineDataSet
+
+* `setCircleRadius(float size)`:设置原型数据指示器的半径，默认值=4f。
+* `setDrawCircles(boolean enabled)`:设置为true的话将启用绘制圆形指示器。默认值：true。
+* `setDrawCubic(boolean enabled)`:如果设置为true，将会以立方样式绘制线条，而不是折线。**这将降低性能！**默认值：false。
+* `setCubicIntensity(float intensity)`:设置线条的立方效果（如果启用）。最大值 = 1f  = 立方效果很强，最小值 = 0.05f = 很弱的立方效果，默认值：0.2f。
+* `setCircleColor(int color)`:设置数据集所有圆形指示器的颜色。
+* `setCircleColors(List colors)`:设置外圈圆的颜色。还有很多设置圆颜色的方法。
+* `setCircleColorHole(int color)`:设置内圈圆的颜色。
+* `setDrawCircleHole(boolean enabled)`:设置数据集的每个圆是否会绘制内圈圆。如果设为false，圆将以填充的方式绘制（没有洞）。
+* `enableDashedLine(float lineLength, float spaceLength, float phase)`:启用以虚线模式绘制线条。比如这样“- — - —-”。`lineLength`是线段的长度，`spaceLength`是线段的间距，`phase`是以度单位的偏移值（通常用0）。
+
+### BarDataSet
+
+* `setBarSpacePercent(float percent)`:设置柱形图之间的间距（以柱形宽度的百分比表示）。
+* `setBarShadowColor(int color)`:设置用于绘制柱形阴影的颜色。柱形印应是在柱形下层表示最大值的曲面。别忘了使用`getResource().getColor(...)`或者`Color.rgb(...)`获取颜色。
+* `setHighLightAlpha(int alpha)`:设置用于绘制高光指示器的alpha值（透明度）。最小值=0（完全透明），最大值=255（完全不透明）。
+* `setStackLabels(String[] labels)`:设置柱状图堆栈不同值的标签（如果有的话）。
+
+### ScatterDataSet
+
+* `setScatterShapeSize(float size)`:以像素为单位，设置散点图绘制的图形大小。这仅适用于非自定义形状。
+* `setScatterShape(ScatterShape shape)`:设置将要在数据位置绘制的形状。
+
+### CandleDataSet
+
+* `setBodySpace(float space)`:设置每个蜡烛体左右两侧的间距。默认值：0.1f（10%），最大值0.45f，最小值0f。
+* `setShadowWidth(float width)`:以`dp`为单位设置蜡烛阴影线的宽度。默认值：3f。
+* `setShadowColor(int color)`:设置蜡烛阴影线的颜色。
+* `setDecreasingColor(int color)`:设置当打开 > 关闭时数据集唯一使用的颜色。
+* `setIncreasingColor(int color)`:设置当打卡 <= 关闭时数据集唯一使用的颜色。
+* `setDecreasingPaintStyle(Paint.Style style)`:设置打开>关闭时的绘制样式（填充或笔划）。
+* `setIncreasingPaintStyle(Paint.Style style)`:设置打开<=关闭时的绘制样式（填充或笔划）
+
+关于`CandleDataSet`颜色的信息：通用的`setColors`(...),`setColor(...)`...等方法在此类上同样可用。如果要指定某部分（蜡烛体，阴影，...）的颜色，则需要使用上面提到的颜色。
+
+### BubbleDataSet
+
+* `setHighlightCircleWidth(float width)`:以像素为单位设置处于搞了状态时，环绕气泡的圆的宽度。
+
+### PieDataSet
+
+* `setSliceSpace(float degrees)`:以`dp`为单位设置饼状图扇区的间距。默认值：0 -> 没有间距，最大值 20，最小值 0。
+* `setSelectionShift(float shift)`:设置饼状图中高亮显示的扇区离开图表中心的距离，默认值12f。
+
+## 22. ViewPortHandler
+
+`ViewPortHandler`类负责处理图表的视区。这意味着它负责图表视图中的可见部分，它当前与平移/缩放级别相关的状态，图标的大小，绘制区域和当前偏移量。`ViewPortHandler`可以直接访问上述属性并修改它们。
+
+不像通过`Chart`类修改修改视区，直接修改`ViewPortHandler`不总是一种完全完全更改可见内容的方法，应由熟悉API的人员小心执行。错误的调用会导致不可预期的表现。无论如何,`ViewPortHandler`提供更多修改视区的高级方法。
+
+### 获取实例
+
+一个`ViewPortHandler`实例只能通过如下方式获取：
+
+```java
+ViewPortHandler handler = chart.getViewPortHandler();
+```
+
+### 缩放和平移
+
+* `getScaleX()`:返回当前横轴的缩放级别。
+* `getScaleY()`:返回当前纵轴的缩放级别。
+* `getTransX()`:返回当前横轴的平移量。
+* `getTransY()`:返回当前纵轴的平移量。
+
+### 图表尺寸和内容
+
+* `getChartWidth()`:返回图表宽度。
+* `getChartHeight()`:返回图表高度。
+* `getContentRect()`: 在一个`RectF`对象中，返回当前区域内容。
+
+更多方法请查阅*JavaDocs*或者学习API。
 
 ## 23. 自定义填充线位置
 
+`FillFormatter`接口**允许定制**`LineDataSet`中填充线结束的位置。要做的是创建一个新类，并实现`FillFormatter`接口。使用接口的
 
+```java
+public float getFillLinePosition(LineDataSet dataSet, LineDataProvider provider)
+```
+
+方法可以实现定制填充线结束位置计算的逻辑。
+
+创建一个实现了接口的类：
+
+```java
+public class MyCustomFillFormatter implements FillFormatter {
+    @Override
+    public float getFillLinePosition(LineDataSet dataSet, LineDataProvider dataProvider) {
+        float myDesiredFillPosition = ...;
+        // put your logic here...
+        return myDesiredFillPosition;
+    }
+}
+```
+
+然后将自定义的格式化器设置给您的`LineDataSet`:
+
+```java
+lineDataSet.setFillFormatter(new MyCustomFillFormatter());
+```
 
 ## 24. Xamarin
 
+**Xamarin可使用MPAndroidChart**
 
+Xamarin端口（由 [Flash3001](https://github.com/Flash3001)维护）：Android— [GitHub](https://github.com/Flash3001/MPAndroidChart.Xamarin)/[NuGet](https://www.nuget.org/packages/MPAndroidChart/)。iOS—[GitHub](https://github.com/Flash3001/iOSCharts.Xamarin)/[NuGet](https://www.nuget.org/packages/iOSCharts/)。
 
-## 25. 创建用户数据集
+## 25. 创建自定义数据集
 
+从[v2.2.0](https://github.com/PhilJay/MPAndroidChart/releases)开始，MPAndrodChart允许您轻松创建并在图表中使用自定义的`DataSet`对象。
 
+### 您需要做什么
+
+* 创建您自定义的类（例如`CustomDataSet`）。
+* 让它继承`BaseDataSet<? extends Entry>`。
+* 根据您的需求，让它实现某个`IDataSet`接口（例如`IBarDataSet`）。
+
+* 实现所有需要的方法，并让它们返回您需要的值。
+
+### 示例
+
+创建一个用于`BarChart`的自定义`BarDataSet`：
+
+```java
+public class CustomBarDataSet extends BaseDataSet<BarEntry> implements IBarDataSet {
+    // implement all by the extended class and interface required methods
+}
+```
+
+在创建`CustomBarDataSet`并实现所有接口需要的方法后，它可以像普通`BarDataSet`那样用于任意`BarChart`。
 
 ## 26. 杂项
 
+### 图表内容
 
+* `clear()`:清除图表的所有数据（通过将其数据对象设为null）。调用`invalidate()`刷新图表。
+* `clearValues()`:清空所有数据对象（通过空所有条目）。不会移除已有的横坐标值。调用`invalidate()`刷新图表。
+* `isEmpty()`:如果图表的数据对象为null，或者没有数据条目时返回空。
 
+### 有用的获取方法
 
+* `getData()`:返回设置给图表的数据对象。
+* `getViewPortHandler()`:返回包含图表大小，边界（偏移量，内容区域），缩放，平移状态信息的`ViewPortHandler`对象。
+* `getRenderer()`:返回负责渲染图表数据的主`DataRenderer`。
+* `getCenter()`:返回整个图表的中心点。
+* `getCenterOffsets()`:返回图表绘制区域的中心点。
+* `getPercentOfTotal(float value)`: 返回给定的值占图表所有值的和的百分比。
+* `getYMin()`:返回图表中最小的数据。
+* `getYMax()`:返回图表中最大的数据。
+* `getLowestVisibleXIndex()`:返回图表中可见的最小横轴索引（横轴上的值）。
+* `getHighestVisibleXIndex()`:返回图表中可见的最大横轴索引（横轴上的值）。
 
+### 更多方法（Chart类）
 
-
-
+* `saveToGallery(String title)`:将当前图表状态以图片的形式保存到相册。**别忘了在manifest中添加"WRITE_EXTERNAL_STORAGE"权限**。
+* `saveToPath(String title, String pathOnSD)`:将当前图表状态以图片的形式保存到指定路径。**别忘了在manifest中添加"WRITE_EXTERNAL_STORAGE"权限**。
+* `getChartBitmap()`:返回表示图表的`Bitmap`对象，这个`Bitmap`总是包含图表最新的绘制状态。
+* `setHardwareAccelerationEnabled(boolean enabled)`:启用/禁用硬件加速，只在API 11以上可用。
 
